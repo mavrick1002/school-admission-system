@@ -13,6 +13,8 @@ RUN dotnet publish src/Admission.Api/Admission.Api.csproj \
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0.14-alpine3.24
 WORKDIR /app
+# Npgsql's GSS probe logs a load error at startup when this library is missing.
+RUN apk add --no-cache krb5-libs
 COPY --from=build /app .
 
 ENV ASPNETCORE_HTTP_PORTS=8080

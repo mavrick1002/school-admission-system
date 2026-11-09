@@ -1,0 +1,50 @@
+@baseUrl = http://localhost:8080
+
+### Health
+GET {{baseUrl}}/health
+
+### Create a class
+# @name createClass
+POST {{baseUrl}}/classes
+Content-Type: application/json
+
+{ "name": "Class 6 - Morning Shift", "totalSeats": 120 }
+
+### List classes with seat counts
+GET {{baseUrl}}/classes
+
+### Get one class (run "Create a class" first)
+GET {{baseUrl}}/classes/{{createClass.response.body.id}}
+
+### 400 VALIDATION_ERROR: empty name
+POST {{baseUrl}}/classes
+Content-Type: application/json
+
+{ "name": "   ", "totalSeats": 120 }
+
+### 400 VALIDATION_ERROR: seats must be positive
+POST {{baseUrl}}/classes
+Content-Type: application/json
+
+{ "name": "Class 7 - Day Shift", "totalSeats": 0 }
+
+### 400 INVALID_JSON: malformed body
+POST {{baseUrl}}/classes
+Content-Type: application/json
+
+{ "name": "Class 7 - Day Shift",
+
+### 415 UNSUPPORTED_MEDIA_TYPE: body is not JSON
+POST {{baseUrl}}/classes
+Content-Type: text/plain
+
+name=Class 7
+
+### 404 CLASS_NOT_FOUND: unknown class
+GET {{baseUrl}}/classes/00000000-0000-0000-0000-000000000000
+
+### 404 NOT_FOUND: unknown route
+GET {{baseUrl}}/does-not-exist
+
+### 405 METHOD_NOT_ALLOWED
+DELETE {{baseUrl}}/classes
