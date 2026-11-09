@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:16.15-alpine
+    command: ["postgres", "-c", "max_connections=200"]
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-admission}
+      POSTGRES_USER: ${POSTGRES_USER:-admission}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admission}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      # -h forces TCP: the image's temporary init server listens only on a unix
+      # socket, so a socket check would report healthy before init has finished.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+      start_period: 5s
+
+  backend:
+    build:
+      context: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ConnectionStrings__Default: ${DB_CONNECTION_STRING:-Host=db;Port=5432;Database=${POSTGRES_DB:-admission};Username=${POSTGRES_USER:-admission};Password=${POSTGRES_PASSWORD:-admission};Maximum Pool Size=40}
+      HOLD_DURATION_SECONDS: ${HOLD_DURATION_SECONDS:-600}
+    ports:
+      - "0.0.0.0:8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
+    ports:
+      - "0.0.0.0:3000:3000"
+
+volumes:
+  db-data:
