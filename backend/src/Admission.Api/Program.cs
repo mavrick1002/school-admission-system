@@ -18,8 +18,12 @@ if (string.IsNullOrWhiteSpace(connectionString))
     return;
 }
 
-var corsOrigin = builder.Configuration["CORS_ORIGIN"];
-corsOrigin = string.IsNullOrWhiteSpace(corsOrigin) ? "http://localhost:3000" : corsOrigin.Trim().TrimEnd('/');
+// A comma-separated list. The default covers both ways of opening the UI locally.
+var corsSetting = builder.Configuration["CORS_ORIGIN"];
+var corsOrigins = (string.IsNullOrWhiteSpace(corsSetting) ? "http://localhost:3000,http://127.0.0.1:3000" : corsSetting)
+    .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+    .Select(origin => origin.TrimEnd('/'))
+    .ToArray();
 
 var holdDurationSetting = builder.Configuration["HOLD_DURATION_SECONDS"];
 var holdDurationSeconds = 600;
@@ -37,7 +41,7 @@ builder.Services.AddHostedService<HoldExpiryService>();
 
 builder.Services.AddDbContext<AdmissionDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
-    .WithOrigins(corsOrigin)
+    .WithOrigins(corsOrigins)
     .WithMethods("GET", "POST", "DELETE")
     .WithHeaders("Content-Type", "X-Student-Id")));
 
