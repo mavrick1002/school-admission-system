@@ -48,3 +48,39 @@ GET {{baseUrl}}/does-not-exist
 
 ### 405 METHOD_NOT_ALLOWED
 DELETE {{baseUrl}}/classes
+
+# ----------------------------------------------------------------------------
+# Holds. Run "Create a class" first. Each new run of that request gives a fresh
+# class, so "Apply" succeeds again for the same student.
+# ----------------------------------------------------------------------------
+
+### 201 Apply (seat hold)
+# @name createHold
+POST {{baseUrl}}/classes/{{createClass.response.body.id}}/holds
+X-Student-Id: 20152691234567890
+
+### 400 MISSING_STUDENT_ID: no header
+POST {{baseUrl}}/classes/{{createClass.response.body.id}}/holds
+
+### 400 INVALID_STUDENT_ID: 16 digits instead of 17
+POST {{baseUrl}}/classes/{{createClass.response.body.id}}/holds
+X-Student-Id: 2015269123456789
+
+### 409 ALREADY_APPLIED: same student twice (run after "Apply")
+POST {{baseUrl}}/classes/{{createClass.response.body.id}}/holds
+X-Student-Id: 20152691234567890
+
+### Create a one-seat class for the "class full" case
+# @name oneSeatClass
+POST {{baseUrl}}/classes
+Content-Type: application/json
+
+{ "name": "Class 9 - Day Shift", "totalSeats": 1 }
+
+### 201 Take the only seat
+POST {{baseUrl}}/classes/{{oneSeatClass.response.body.id}}/holds
+X-Student-Id: 20150000000000001
+
+### 409 CLASS_FULL: a different student, no seats left
+POST {{baseUrl}}/classes/{{oneSeatClass.response.body.id}}/holds
+X-Student-Id: 20150000000000002

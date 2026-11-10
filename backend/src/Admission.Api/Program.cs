@@ -12,6 +12,20 @@ var connectionString = builder.Configuration.GetConnectionString("Default")
 var corsOrigin = builder.Configuration["CORS_ORIGIN"];
 corsOrigin = string.IsNullOrWhiteSpace(corsOrigin) ? "http://localhost:3000" : corsOrigin.Trim().TrimEnd('/');
 
+var holdDurationSetting = builder.Configuration["HOLD_DURATION_SECONDS"];
+var holdDurationSeconds = 600;
+if (!string.IsNullOrWhiteSpace(holdDurationSetting)
+    && (!int.TryParse(holdDurationSetting, out holdDurationSeconds) || holdDurationSeconds <= 0))
+{
+    // A clean exit code 1; an unhandled exception here makes the container exit with 139.
+    Console.Error.WriteLine(
+        $"Configuration error: HOLD_DURATION_SECONDS must be a positive whole number of seconds, but was '{holdDurationSetting}'.");
+    Environment.ExitCode = 1;
+    return;
+}
+
+builder.Services.AddSingleton(new HoldSettings(holdDurationSeconds));
+
 builder.Services.AddDbContext<AdmissionDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .WithOrigins(corsOrigin)
@@ -23,7 +37,10 @@ builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadReq
 
 // The web defaults would otherwise accept "120" as the number 120.
 builder.Services.ConfigureHttpJsonOptions(options =>
-    options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict);
+{
+    options.SerializerOptions.NumberHandling = JsonNumberHandling.Strict;
+    options.SerializerOptions.Converters.Add(new UtcDateTimeJsonConverter());
+});
 
 var app = builder.Build();
 
@@ -36,5 +53,6 @@ app.UseMiddleware<ApiErrorMiddleware>();
 app.MapGet("/", () => "Hello World!");
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapClassEndpoints();
+app.MapHoldEndpoints();
 
 app.Run();
