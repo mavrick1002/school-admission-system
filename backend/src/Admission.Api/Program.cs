@@ -63,7 +63,6 @@ await DatabaseMigrator.MigrateAsync(app.Services);
 app.UseCors();
 app.UseMiddleware<ApiErrorMiddleware>();
 
-app.MapGet("/", () => "Hello World!");
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapClassEndpoints();
 app.MapHoldEndpoints();
