@@ -121,7 +121,8 @@ export function HoldPage() {
         {status === 'CONFIRMED' && <p className="text-ok">ভর্তি ফি পরিশোধ হয়েছে, ভর্তি নিশ্চিত।</p>}
         {status === 'CANCELLED' && <p className="muted">এই আবেদনটি বাতিল করা হয়েছে।</p>}
 
-        {data.status === 'HELD' && (
+        {/* status, not data.status: it is already EXPIRED once the countdown reaches 0. */}
+        {status === 'HELD' && (
           <p className="muted small">মেয়াদ শেষ হবে: {formatDateTime(data.expiresAt)}</p>
         )}
 

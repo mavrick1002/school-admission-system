@@ -49,6 +49,7 @@ services:
   # tmpfs and publishes no ports, so it never touches the services above or
   # their data. Run with:
   #   docker compose --profile test run --rm --build backend-tests
+  #   docker compose --profile test run --rm --build frontend-tests
   # ---------------------------------------------------------------------------
   db-test:
     profiles: ["test"]
@@ -109,6 +110,13 @@ services:
       API_A_URL: http://api-a:8080
       API_B_URL: http://api-b:8080
       API_SHORT_URL: http://api-short:8080
+
+  # Vitest + React Testing Library with a mocked fetch: needs no backend or database.
+  frontend-tests:
+    profiles: ["test"]
+    build:
+      context: ./frontend
+      target: test
 
 volumes:
   db-data:
