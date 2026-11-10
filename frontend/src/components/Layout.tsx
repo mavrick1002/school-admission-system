@@ -11,6 +11,7 @@ export function Layout() {
       <header className="site-header">
         <div className="container header-inner">
           <NavLink to="/" className="brand">
+            <img src="/favicon.svg" alt="" className="brand-icon" width={32} height={32} />
             স্কুল ভর্তি
           </NavLink>
           <nav className="nav" aria-label="প্রধান মেনু">
