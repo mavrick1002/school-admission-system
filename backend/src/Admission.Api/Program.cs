@@ -6,8 +6,17 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("Default")
-    ?? throw new InvalidOperationException("The ConnectionStrings__Default environment variable is required.");
+// Configuration errors end with a clean exit code 1; an unhandled exception at this
+// point makes the container exit with 139.
+var connectionString = builder.Configuration.GetConnectionString("Default");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    Console.Error.WriteLine(
+        "Configuration error: the ConnectionStrings__Default environment variable is required, " +
+        "for example 'Host=db;Port=5432;Database=admission;Username=admission;Password=admission'.");
+    Environment.ExitCode = 1;
+    return;
+}
 
 var corsOrigin = builder.Configuration["CORS_ORIGIN"];
 corsOrigin = string.IsNullOrWhiteSpace(corsOrigin) ? "http://localhost:3000" : corsOrigin.Trim().TrimEnd('/');
@@ -17,7 +26,6 @@ var holdDurationSeconds = 600;
 if (!string.IsNullOrWhiteSpace(holdDurationSetting)
     && (!int.TryParse(holdDurationSetting, out holdDurationSeconds) || holdDurationSeconds <= 0))
 {
-    // A clean exit code 1; an unhandled exception here makes the container exit with 139.
     Console.Error.WriteLine(
         $"Configuration error: HOLD_DURATION_SECONDS must be a positive whole number of seconds, but was '{holdDurationSetting}'.");
     Environment.ExitCode = 1;
@@ -25,6 +33,7 @@ if (!string.IsNullOrWhiteSpace(holdDurationSetting)
 }
 
 builder.Services.AddSingleton(new HoldSettings(holdDurationSeconds));
+builder.Services.AddHostedService<HoldExpiryService>();
 
 builder.Services.AddDbContext<AdmissionDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy

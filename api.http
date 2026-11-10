@@ -84,3 +84,140 @@ X-Student-Id: 20150000000000001
 ### 409 CLASS_FULL: a different student, no seats left
 POST {{baseUrl}}/classes/{{oneSeatClass.response.body.id}}/holds
 X-Student-Id: 20150000000000002
+
+# ----------------------------------------------------------------------------
+# One application. Run "Create a class" and "Apply" first. All hold responses
+# also carry secondsRemaining (0 when the status is not HELD).
+# ----------------------------------------------------------------------------
+
+### 200 Application status (no X-Student-Id needed)
+GET {{baseUrl}}/holds/{{createHold.response.body.holdId}}
+
+### 404 HOLD_NOT_FOUND: unknown hold id
+GET {{baseUrl}}/holds/00000000-0000-0000-0000-000000000000
+
+### 404 HOLD_NOT_FOUND: hold id is not a GUID
+GET {{baseUrl}}/holds/h_789
+
+# ----------------------------------------------------------------------------
+# Confirm (pay the admission fee)
+# ----------------------------------------------------------------------------
+
+### 400 MISSING_STUDENT_ID: confirm without the header
+POST {{baseUrl}}/holds/{{createHold.response.body.holdId}}/confirm
+
+### 400 INVALID_STUDENT_ID: confirm with 16 digits
+POST {{baseUrl}}/holds/{{createHold.response.body.holdId}}/confirm
+X-Student-Id: 2015269123456789
+
+### 404 HOLD_NOT_FOUND: confirm an unknown hold
+POST {{baseUrl}}/holds/00000000-0000-0000-0000-000000000000/confirm
+X-Student-Id: 20152691234567890
+
+### 404 HOLD_NOT_FOUND: confirm with a non-GUID hold id
+POST {{baseUrl}}/holds/h_789/confirm
+X-Student-Id: 20152691234567890
+
+### 403 NOT_YOUR_HOLD: another student confirms
+POST {{baseUrl}}/holds/{{createHold.response.body.holdId}}/confirm
+X-Student-Id: 20159999999999999
+
+### 200 CONFIRMED: own HELD hold
+POST {{baseUrl}}/holds/{{createHold.response.body.holdId}}/confirm
+X-Student-Id: 20152691234567890
+
+### 200 CONFIRMED again: repeat confirm changes nothing
+POST {{baseUrl}}/holds/{{createHold.response.body.holdId}}/confirm
+X-Student-Id: 20152691234567890
+
+### Check: confirmedSeats is 1, not 2, after the two confirms
+GET {{baseUrl}}/classes/{{createClass.response.body.id}}
+
+# ----------------------------------------------------------------------------
+# Cancel. Uses a second student's hold in the same class.
+# ----------------------------------------------------------------------------
+
+### 201 Apply as a second student (the hold to cancel)
+# @name cancelHold
+POST {{baseUrl}}/classes/{{createClass.response.body.id}}/holds
+X-Student-Id: 20152691234567891
+
+### 400 MISSING_STUDENT_ID: cancel without the header
+DELETE {{baseUrl}}/holds/{{cancelHold.response.body.holdId}}
+
+### 400 INVALID_STUDENT_ID: cancel with letters
+DELETE {{baseUrl}}/holds/{{cancelHold.response.body.holdId}}
+X-Student-Id: 2015269123456789A
+
+### 404 HOLD_NOT_FOUND: cancel an unknown hold
+DELETE {{baseUrl}}/holds/00000000-0000-0000-0000-000000000000
+X-Student-Id: 20152691234567891
+
+### 404 HOLD_NOT_FOUND: cancel with a non-GUID hold id
+DELETE {{baseUrl}}/holds/h_789
+X-Student-Id: 20152691234567891
+
+### 403 NOT_YOUR_HOLD: another student cancels
+DELETE {{baseUrl}}/holds/{{cancelHold.response.body.holdId}}
+X-Student-Id: 20159999999999999
+
+### 204 Cancel own HELD hold (the seat is freed)
+DELETE {{baseUrl}}/holds/{{cancelHold.response.body.holdId}}
+X-Student-Id: 20152691234567891
+
+### Check: heldSeats went back down after the cancel
+GET {{baseUrl}}/classes/{{createClass.response.body.id}}
+
+### 204 Cancel again: already CANCELLED
+DELETE {{baseUrl}}/holds/{{cancelHold.response.body.holdId}}
+X-Student-Id: 20152691234567891
+
+### 409 HOLD_CANCELLED: confirm a cancelled hold
+POST {{baseUrl}}/holds/{{cancelHold.response.body.holdId}}/confirm
+X-Student-Id: 20152691234567891
+
+### 409 HOLD_CONFIRMED: cancel a confirmed admission (run after "200 CONFIRMED")
+DELETE {{baseUrl}}/holds/{{createHold.response.body.holdId}}
+X-Student-Id: 20152691234567890
+
+# ----------------------------------------------------------------------------
+# Expired holds. These need a short hold: start the backend with, for example,
+#   HOLD_DURATION_SECONDS=10 docker compose up -d backend
+# then run "Apply (expiring)", wait more than 10 seconds and run the rest.
+# Put the backend back afterwards with: docker compose up -d backend
+# ----------------------------------------------------------------------------
+
+### 201 Apply (expiring)
+# @name expiringHold
+POST {{baseUrl}}/classes/{{createClass.response.body.id}}/holds
+X-Student-Id: 20152691234567892
+
+### 200 status EXPIRED, secondsRemaining 0 (after the wait)
+GET {{baseUrl}}/holds/{{expiringHold.response.body.holdId}}
+
+### 409 HOLD_EXPIRED: confirm an expired hold
+POST {{baseUrl}}/holds/{{expiringHold.response.body.holdId}}/confirm
+X-Student-Id: 20152691234567892
+
+### 409 HOLD_EXPIRED: cancel an expired hold
+DELETE {{baseUrl}}/holds/{{expiringHold.response.body.holdId}}
+X-Student-Id: 20152691234567892
+
+# ----------------------------------------------------------------------------
+# My applications
+# ----------------------------------------------------------------------------
+
+### 200 All of this student's holds, newest first, with className
+GET {{baseUrl}}/me/holds
+X-Student-Id: 20152691234567890
+
+### 200 Empty list for a student with no holds
+GET {{baseUrl}}/me/holds
+X-Student-Id: 20159999999999999
+
+### 400 MISSING_STUDENT_ID
+GET {{baseUrl}}/me/holds
+
+### 400 INVALID_STUDENT_ID: 18 digits
+GET {{baseUrl}}/me/holds
+X-Student-Id: 201526912345678901
